@@ -31,6 +31,12 @@ If you use two assistants, **Assistant 2 skin** in the same place sets the look 
 
 ## What you see
 
+| You speak | The assistant answers | The overlay closes |
+| --- | --- | --- |
+| <img src="docs/listening.jpg" alt="Listening: short spikes travel out from the bat's wings as the user speaks" width="250"> | <img src="docs/answering.jpg" alt="Answering: tall traces spike on both sides of the glowing bat, with the lit label, the question and the answer below" width="250"> | <img src="docs/closing-spin.jpg" alt="Closing: the bat shrinks as it spins away inside two fading rings" width="250"> |
+
+These are from a real turn on a portrait tablet.
+
 | When | What the skin shows |
 | --- | --- |
 | You speak | The two lines follow your voice out from the bat's wings, and the bat glows a little with it. |
@@ -47,7 +53,7 @@ Kiosk Satellite has two overlay modes, and the skin draws both. Full screen cove
 | --- | --- |
 | <img src="docs/full-screen.jpg" alt="Full screen on a portrait tablet: the bat with its two traces above the label, the question and the answer" width="320"> | <img src="docs/docked.jpg" alt="Docked on a portrait tablet: a card at the bottom of the screen with a small bat beside the question and the answer, the screensaver in view above it" width="320"> |
 
-Both pictures are Kiosk Satellite's preview on a portrait tablet, with the traces at rest.
+These two are Kiosk Satellite's preview, with the traces at rest.
 
 ## Settings
 
