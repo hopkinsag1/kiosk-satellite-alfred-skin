@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1
+
+- Rewrite the README for people new to the plugin, with an install button, the steps to turn the skin on and a troubleshooting section. No change to the plugin itself.
+
 ## 0.3.0
 
 - Add **Bat color**, **Trace color** and **Text color** settings. Left at their defaults, the skin looks as before in both themes.
