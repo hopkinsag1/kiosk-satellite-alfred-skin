@@ -62,7 +62,7 @@
       "options": ["Command complete and close", "Close only", "Off"],
       "default": "Command complete and close",
       "group": "Motion",
-      "description": "The 1966 Batman spin: after the assistant finishes speaking, and when the overlay closes."
+      "description": "When the bat spins: after the assistant finishes speaking, and when the overlay closes."
     }
   ],
   "commands": []
