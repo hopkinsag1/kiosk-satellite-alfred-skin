@@ -30,7 +30,8 @@ final class SkinController {
     static final String KEY = "alfred_bat";
     /** Where the docked bubble sits above the bottom edge, in dp. */
     static final int DOCK_INSET = 24;
-    static final String[] EVENTS = {"voice.skin", "voice.overlay", "voice.level", "voice.text", "voice.appearance"};
+    /** The turn's events, followed only while the skin is picked. voice.skin itself is followed all along. */
+    static final String[] EVENTS = {"voice.overlay", "voice.level", "voice.text", "voice.appearance", "voice.state"};
     /** The full screen backdrop's opacity when Background is left at Skin default: the Bat Cave's near-solid black. */
     static final float DEFAULT_BACKGROUND = 0.96f;
     /** How long the exit spin keeps the overlay up after KS hides the turn, in ms. */
@@ -42,8 +43,13 @@ final class SkinController {
     private boolean selected;
     private boolean skinHeard;
     private boolean appearanceHeard;
-    /** A voice.state event has arrived, so the end of speech is known rather than guessed. */
+    /** Whether the turn's events are followed, which they are only while the skin is picked. */
+    private boolean following;
+    /** This Kiosk Satellite sends voice.state, so the end of speech is known rather than guessed. */
+    private boolean stateFollowed;
+    /** A voice.state or voice.overlay event arrived since following began, which is newer than a read. */
     private boolean stateHeard;
+    private boolean overlayHeard;
     private String overlay = "hidden";
     private String drawn;
     /** The exit spin is playing and hideOverlay is scheduled. */
@@ -76,8 +82,9 @@ final class SkinController {
     synchronized void start(PluginHost host) {
         this.host = host;
         int current = ++generation;
+        // Only the skin choice is followed from the start, so the plugin costs nothing while another skin draws the turn.
         try {
-            for (String event : EVENTS) host.subscribe(event);
+            host.subscribe("voice.skin");
         } catch (IllegalArgumentException | UnsupportedOperationException olderHost) {
             try {
                 host.status("This Kiosk Satellite version has no voice skins.", true);
@@ -86,26 +93,58 @@ final class SkinController {
             }
             return;
         }
-        try {
-            host.subscribe("voice.state");
-        } catch (IllegalArgumentException | UnsupportedOperationException olderHost) {
-            // Without it the end of speech is guessed from the words.
-        }
-        read(current);
+        readState(current);
     }
 
-    private void read(int current) {
-        // Events win over these reads: they are newer.
+    /** Reads whether the skin is picked and where the turn stands. Events win over the read: they are newer. */
+    private void readState(int current) {
         host.executeCommand("getVoiceState", Collections.<String, Object>emptyMap(), (ok, data, error) -> {
             synchronized (SkinController.this) {
                 if (current != generation || !ok || !(data instanceof Map)) return;
                 Map<?, ?> voice = (Map<?, ?>) data;
                 if (!skinHeard) selected = Boolean.TRUE.equals(voice.get("skinSelected"));
-                if ("hidden".equals(overlay) && voice.get("overlay") instanceof String) overlay = (String) voice.get("overlay");
-                if (voice.get("state") instanceof String) state = (String) voice.get("state");
+                follow(false);
+                if (following) {
+                    if (!overlayHeard && voice.get("overlay") instanceof String) overlay = (String) voice.get("overlay");
+                    if (!stateHeard && voice.get("state") instanceof String) state = (String) voice.get("state");
+                }
                 update();
             }
         });
+    }
+
+    /**
+     * Follows the turn while the skin is picked and lets it go when another skin is.
+     *
+     * @param read whether to read the turn's state too: yes unless the caller holds a fresh read
+     */
+    private void follow(boolean read) {
+        if (host == null || selected == following) return;
+        following = selected;
+        stateHeard = false;
+        overlayHeard = false;
+        for (String event : EVENTS) {
+            boolean isState = "voice.state".equals(event);
+            try {
+                if (following) host.subscribe(event);
+                else host.unsubscribe(event);
+                if (isState) stateFollowed = following;
+            } catch (IllegalArgumentException | UnsupportedOperationException olderHost) {
+                // An event this Kiosk Satellite does not have. Without voice.state the end of speech is guessed from the words.
+                if (isState) stateFollowed = false;
+            }
+        }
+        if (!following) {
+            // Nothing more is heard about the turn, so nothing of it may be left to show later.
+            overlay = "hidden";
+            state = "idle";
+            level = 0;
+            command = answer = tool = "";
+            streaming = false;
+            return;
+        }
+        int current = generation;
+        if (read) readState(current);
         host.executeCommand("getVoiceAppearance", Collections.<String, Object>emptyMap(), (ok, data, error) -> {
             synchronized (SkinController.this) {
                 if (current == generation && ok && data instanceof Map && !appearanceHeard) appearance((Map<?, ?>) data);
@@ -133,8 +172,10 @@ final class SkinController {
         if ("ks.voice.skin".equals(event)) {
             selected = Boolean.TRUE.equals(payload.get("selected"));
             skinHeard = true;
+            follow(true);
         } else if ("ks.voice.overlay".equals(event)) {
             overlay = String.valueOf(payload.get("overlay"));
+            overlayHeard = true;
         } else if ("ks.voice.level".equals(event)) {
             Object value = payload.get("level");
             level = value instanceof Number ? ((Number) value).floatValue() : 0;
@@ -150,7 +191,7 @@ final class SkinController {
             words(payload);
             if (command.isEmpty() && answer.isEmpty()) spunThisTurn = false;
             // No voice.state on this KS: the spin goes on the end of the text instead of the end of speech.
-            else if (!stateHeard && !answer.isEmpty() && !streaming) completed();
+            else if (!stateFollowed && !answer.isEmpty() && !streaming) completed();
             return;
         } else if ("ks.voice.appearance".equals(event)) {
             appearanceHeard = true;
@@ -262,7 +303,10 @@ final class SkinController {
         selected = false;
         skinHeard = false;
         appearanceHeard = false;
+        following = false;
+        stateFollowed = false;
         stateHeard = false;
+        overlayHeard = false;
         overlay = "hidden";
         drawn = null;
         hidePending = false;

@@ -32,7 +32,7 @@ final class BatArt {
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private int width, height;
     private boolean shadersDark;
-    private Shader traceLeft, traceRight, halo, batFill;
+    private Shader traceFade, halo, batFill;
     private float shown, glow = 0.2f, breath;
     private long lastNs;
 
@@ -98,24 +98,29 @@ final class BatArt {
         if (exitDone) return true;
 
         // The traces: mirrored upper and lower lines from the bat to each edge, fading out.
+        // The view is as wide on both sides of the bat, so one fade and one line serve all four.
         int n = Math.min(Trace.SIZE, (int) Math.ceil((w / 2f) / dx) + 2);
         float under = (compact ? 3 : 7) * density, main = (compact ? 1.2f : 2.4f) * density;
+        // One line is built a frame, from the bat's centre out to the right and down, and drawn four times mirrored.
+        line.rewind();
+        line.moveTo(0, trace.at(0) * rise);
+        for (int i = 1; i < n; i++) line.lineTo(i * dx, trace.at(i) * rise);
+        int underColor = withAlpha(accent, 0.18f * alpha), mainAlpha = Math.round(255 * alpha);
         for (int side = -1; side <= 1; side += 2) {
             for (int dir = -1; dir <= 1; dir += 2) {
-                line.rewind();
-                for (int i = 0; i < n; i++) {
-                    float x = cx + side * i * dx, y = cy + dir * trace.at(i) * rise;
-                    if (i == 0) line.moveTo(x, y); else line.lineTo(x, y);
-                }
+                canvas.save();
+                canvas.translate(cx, cy);
+                canvas.scale(side, dir);
                 stroke.setShader(null);
-                stroke.setColor(withAlpha(accent, 0.18f * alpha));
+                stroke.setColor(underColor);
                 stroke.setStrokeWidth(under);
                 canvas.drawPath(line, stroke);
-                stroke.setShader(side < 0 ? traceLeft : traceRight);
+                stroke.setShader(traceFade);
                 stroke.setColor(Color.WHITE);
-                stroke.setAlpha(Math.round(255 * alpha));
+                stroke.setAlpha(mainAlpha);
                 stroke.setStrokeWidth(main);
                 canvas.drawPath(line, stroke);
+                canvas.restore();
             }
         }
         stroke.setShader(null);
@@ -169,8 +174,8 @@ final class BatArt {
         float batW = compact ? w * 0.82f : Math.min(w * 0.34f, h * 0.78f);
         int[] fade = {withAlpha(accent, 0.95f), withAlpha(accent, 0.45f), withAlpha(accent, 0)};
         float[] stops = {0, 0.75f, 1};
-        traceLeft = new LinearGradient(cx, 0, 0, 0, fade, stops, Shader.TileMode.CLAMP);
-        traceRight = new LinearGradient(cx, 0, w, 0, fade, stops, Shader.TileMode.CLAMP);
+        // In the trace's own space: from the bat's centre out to the edge. The mirrored draws flip it with the line.
+        traceFade = new LinearGradient(0, 0, Math.max(1, cx), 0, fade, stops, Shader.TileMode.CLAMP);
         halo = new RadialGradient(cx, cy, Math.max(1, batW * 0.9f), new int[] {accent, withAlpha(accent, 0)}, null, Shader.TileMode.CLAMP);
         batFill = new LinearGradient(0, 0, 0, BatPath.HEIGHT, accent, deep, Shader.TileMode.CLAMP);
     }

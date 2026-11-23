@@ -15,6 +15,7 @@ public final class AlfredSkinTest {
         int shows, hides;
         public void executeCommand(String command, Map<String, Object> arguments, CommandCallback callback) { assert arguments.isEmpty(); reads.put(command, callback); }
         public void subscribe(String event) { subscriptions.add(event); }
+        public void unsubscribe(String event) { subscriptions.remove(event); }
         public void showOverlay(String key, OverlaySpec spec, OverlayFactory factory) { assert key.matches("[a-z][a-z0-9_]{0,39}") : key; overlays.put(key, spec); shows++; }
         public void hideOverlay(String key) { overlays.remove(key); hides++; }
         public void showWindow(String title, String message, String button) {}
@@ -35,17 +36,23 @@ public final class AlfredSkinTest {
         SkinController skin = new SkinController();
         skin.start(host);
         skin.configure(map("label", " Alfred ", "traceHeight", "Tall", "spin", "Command complete and close"));
-        assert host.subscriptions.containsAll(Arrays.asList(SkinController.EVENTS)) && host.subscriptions.contains("voice.state");
-        assert host.reads.containsKey("getVoiceState") && host.reads.containsKey("getVoiceText") && host.reads.containsKey("getVoiceAppearance");
+        // Until the skin is picked only the skin choice is followed: one subscription and one read.
+        assert host.subscriptions.equals(Collections.singleton("voice.skin")) : host.subscriptions;
+        assert host.reads.keySet().equals(Collections.singleton("getVoiceState")) : host.reads.keySet();
         assert "Alfred".equals(skin.label) && skin.traceAmp > 0.3f && skin.spinMode == SkinController.SPIN_ALL;
 
-        // Not picked: the turn is KS's to draw.
+        // Not picked: the turn is KS's to draw, and its events stay unfollowed.
         host.reads.get("getVoiceState").onResult(true, map("enabled", true, "state", "idle", "skinSelected", false, "overlay", "hidden"), null);
-        skin.onEvent("ks.voice.overlay", map("overlay", "full"));
-        assert host.overlays.isEmpty() && skin.drawn() == null;
+        assert host.subscriptions.size() == 1 && host.overlays.isEmpty() && skin.drawn() == null;
 
-        // Picked: it draws full screen, on top, passing touches through.
+        // Picked: the turn's events and reads start, and a turn draws full screen, on top, passing touches through.
         skin.onEvent("ks.voice.skin", map("selected", true));
+        assert host.subscriptions.containsAll(Arrays.asList(SkinController.EVENTS)) && host.subscriptions.contains("voice.skin");
+        assert host.reads.containsKey("getVoiceText") && host.reads.containsKey("getVoiceAppearance");
+        assert host.overlays.isEmpty() : "nothing shows before the overlay does";
+        skin.onEvent("ks.voice.overlay", map("overlay", "full"));
+        // An older read never takes down what a newer event put up.
+        host.reads.get("getVoiceState").onResult(true, map("enabled", true, "state", "idle", "skinSelected", true, "overlay", "hidden"), null);
         OverlaySpec spec = host.overlays.get(SkinController.KEY);
         assert spec != null && spec.onTop() && !spec.touchable() && !spec.closeOnBack();
         assert "full".equals(skin.drawn()) && skin.spinKind == BatArt.SPIN_NONE;
@@ -97,6 +104,19 @@ public final class AlfredSkinTest {
         // Appearance settings reach the fields the view reads.
         skin.onEvent("ks.voice.appearance", map("theme", "light", "background", 0.5, "textScale", 1.5, "reactive", false));
         assert "light".equals(skin.theme) && skin.background == 0.5f && skin.textScale == 1.5f && !skin.reactive;
+
+        // Another skin picked mid-turn: the overlay goes, the turn's events are let go and nothing stale is kept.
+        int hidesBefore = host.hides;
+        skin.onEvent("ks.voice.skin", map("selected", false));
+        assert host.subscriptions.equals(Collections.singleton("voice.skin")) : host.subscriptions;
+        assert host.overlays.isEmpty() && skin.drawn() == null && host.hides == hidesBefore + 1 && skin.command.isEmpty();
+        // Picked again with no turn showing: followed again, and the old turn does not come back.
+        host.reads.clear();
+        skin.onEvent("ks.voice.skin", map("selected", true));
+        assert host.subscriptions.containsAll(Arrays.asList(SkinController.EVENTS)) && host.overlays.isEmpty() && skin.drawn() == null;
+        // Picked while a turn already shows: the read brings it up.
+        host.reads.get("getVoiceState").onResult(true, map("enabled", true, "state", "responding", "skinSelected", true, "overlay", "docked"), null);
+        assert "docked".equals(skin.drawn()) && Trace.ANSWERING.equals(skin.phase());
 
         // Stop clears everything and ignores late events.
         skin.stop();

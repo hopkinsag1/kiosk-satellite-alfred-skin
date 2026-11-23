@@ -14,7 +14,7 @@ What you said and the answer show under the bat, as with the built-in skins. Doc
 
 ## Requirements
 
-- Kiosk Satellite 2026.10.34 or later (plugin voice skins). Per-assistant skins need the release after 2026.10.38.
+- Kiosk Satellite 2026.10.39 or later.
 - The native Voice Satellite runtime turned on. Skins draw only its turns.
 
 ## Installation
