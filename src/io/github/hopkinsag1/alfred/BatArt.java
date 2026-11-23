@@ -31,7 +31,7 @@ final class BatArt {
     private final Paint stroke = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private int width, height;
-    private boolean shadersDark;
+    private int shadersBat, shadersTrace;
     private Shader traceFade, halo, batFill;
     private float shown, glow = 0.2f, breath;
     private long lastNs;
@@ -49,18 +49,19 @@ final class BatArt {
     /**
      * @param level the voice level KS sent, 0 while Reactive activity bar is off
      * @param phase Trace.LISTENING, THINKING, ANSWERING or RESTING
+     * @param accent the bat's colour, opaque ARGB: its fill, glow, halo and the spin's rings
+     * @param traceColor the traces' colour, opaque ARGB
      * @param amp how far the traces spike, as a share of the view's height
      * @param spinKind SPIN_NONE, SPIN_DONE or SPIN_EXIT
      * @param spinStartNs when the spin started, System.nanoTime
      * @return whether the exit spin has finished, so the view can stop drawing
      */
-    boolean draw(Canvas canvas, int w, int h, float level, String phase, boolean dark, float amp, int spinKind, long spinStartNs) {
+    boolean draw(Canvas canvas, int w, int h, float level, String phase, int accent, int traceColor, float amp, int spinKind, long spinStartNs) {
         long now = System.nanoTime();
         float dt = lastNs == 0 ? 1 / 60f : Math.min(0.05f, (now - lastNs) / 1e9f);
         lastNs = now;
         float t = (now % 1_000_000_000_000L) / 1e9f;
-        if (w != width || h != height || dark != shadersDark) build(w, h, dark);
-        int accent = dark ? DARK_ACCENT : LIGHT_ACCENT;
+        if (w != width || h != height || accent != shadersBat || traceColor != shadersTrace) build(w, h, accent, traceColor);
 
         // Ease toward the latest level: KS sends about 30 a second.
         shown += (level - shown) * (level > shown ? 0.55f : 0.3f);
@@ -105,7 +106,7 @@ final class BatArt {
         line.rewind();
         line.moveTo(0, trace.at(0) * rise);
         for (int i = 1; i < n; i++) line.lineTo(i * dx, trace.at(i) * rise);
-        int underColor = withAlpha(accent, 0.18f * alpha), mainAlpha = Math.round(255 * alpha);
+        int underColor = withAlpha(traceColor, 0.18f * alpha), mainAlpha = Math.round(255 * alpha);
         for (int side = -1; side <= 1; side += 2) {
             for (int dir = -1; dir <= 1; dir += 2) {
                 canvas.save();
@@ -167,17 +168,25 @@ final class BatArt {
         return false;
     }
 
-    private void build(int w, int h, boolean dark) {
-        width = w; height = h; shadersDark = dark;
-        int accent = dark ? DARK_ACCENT : LIGHT_ACCENT, deep = dark ? DARK_DEEP : LIGHT_DEEP;
+    private void build(int w, int h, int accent, int traceColor) {
+        width = w; height = h; shadersBat = accent; shadersTrace = traceColor;
+        int deep = deep(accent);
         float cx = w / 2f, cy = compact ? h * 0.46f : h * 0.5f;
         float batW = compact ? w * 0.82f : Math.min(w * 0.34f, h * 0.78f);
-        int[] fade = {withAlpha(accent, 0.95f), withAlpha(accent, 0.45f), withAlpha(accent, 0)};
+        int[] fade = {withAlpha(traceColor, 0.95f), withAlpha(traceColor, 0.45f), withAlpha(traceColor, 0)};
         float[] stops = {0, 0.75f, 1};
         // In the trace's own space: from the bat's centre out to the edge. The mirrored draws flip it with the line.
         traceFade = new LinearGradient(0, 0, Math.max(1, cx), 0, fade, stops, Shader.TileMode.CLAMP);
         halo = new RadialGradient(cx, cy, Math.max(1, batW * 0.9f), new int[] {accent, withAlpha(accent, 0)}, null, Shader.TileMode.CLAMP);
         batFill = new LinearGradient(0, 0, 0, BatPath.HEIGHT, accent, deep, Shader.TileMode.CLAMP);
+    }
+
+    /** The darker shade the bat's fill runs down to: the Bat Cave pair for its own accents, two thirds of the brightness otherwise. */
+    static int deep(int accent) {
+        if (accent == DARK_ACCENT) return DARK_DEEP;
+        if (accent == LIGHT_ACCENT) return LIGHT_DEEP;
+        int r = (accent >> 16 & 0xFF) * 2 / 3, g = (accent >> 8 & 0xFF) * 2 / 3, b = (accent & 0xFF) * 2 / 3;
+        return 0xFF000000 | r << 16 | g << 8 | b;
     }
 
     static int withAlpha(int color, float alpha) {

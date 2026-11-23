@@ -37,6 +37,8 @@ final class SkinController {
     /** How long the exit spin keeps the overlay up after KS hides the turn, in ms. */
     static final long EXIT_MS = 750;
     static final int SPIN_OFF = 0, SPIN_CLOSE = 1, SPIN_ALL = 2;
+    /** The colour settings' defaults, as the manifest declares them. Left at these, the skin keeps its light and dark palettes. */
+    static final String DEFAULT_BAT = "#8FBADC", DEFAULT_TRACE = "#8FBADC", DEFAULT_TEXT = "#F2F7FB";
 
     private PluginHost host;
     private int generation;
@@ -72,6 +74,8 @@ final class SkinController {
     volatile String label = "ALFRED";
     volatile float traceAmp = 0.26f;
     volatile int spinMode = SPIN_ALL;
+    /** The colour settings as opaque ARGB, or null while one is left at its default, which keeps the Bat Cave palette of the theme. */
+    volatile Integer batColor, traceColor, textColor;
     // Motion shared across views: a change of overlay mode builds a new view mid-turn.
     final Trace trace = new Trace();
     volatile int spinKind = BatArt.SPIN_NONE;
@@ -164,7 +168,30 @@ final class SkinController {
         traceAmp = "Low".equals(height) ? 0.16f : "Tall".equals(height) ? 0.36f : 0.26f;
         Object spin = settings.get("spin");
         spinMode = "Off".equals(spin) ? SPIN_OFF : "Close only".equals(spin) ? SPIN_CLOSE : SPIN_ALL;
+        batColor = color(settings.get("batColor"), DEFAULT_BAT);
+        traceColor = color(settings.get("traceColor"), DEFAULT_TRACE);
+        textColor = color(settings.get("textColor"), DEFAULT_TEXT);
         restyleLater();
+    }
+
+    /** A colour setting as opaque ARGB: null for the default, a missing value or anything that is not #RRGGBB. */
+    static Integer color(Object value, String fallback) {
+        if (!(value instanceof String)) return null;
+        String text = ((String) value).trim();
+        if (text.equalsIgnoreCase(fallback) || !text.matches("#[a-fA-F0-9]{6}")) return null;
+        return 0xFF000000 | Integer.parseInt(text.substring(1), 16);
+    }
+
+    /** The bat's colour: the one picked, or the Bat Cave accent of the theme. */
+    int bat(boolean dark) {
+        Integer picked = batColor;
+        return picked != null ? picked : dark ? BatArt.DARK_ACCENT : BatArt.LIGHT_ACCENT;
+    }
+
+    /** The traces' colour: the one picked, or the Bat Cave accent of the theme. */
+    int traces(boolean dark) {
+        Integer picked = traceColor;
+        return picked != null ? picked : dark ? BatArt.DARK_ACCENT : BatArt.LIGHT_ACCENT;
     }
 
     synchronized void onEvent(String event, Map<String, Object> payload) {
@@ -427,8 +454,9 @@ final class SkinController {
         void restyle() {
             boolean dark = dark();
             int backdrop = dark ? 0xFF0A0E14 : 0xFFE9EEF3;
-            int text = dark ? 0xFFF2F7FB : 0xFF15202B;
-            int muted = dark ? 0xB3C7D6E4 : 0xFF5C6B7A;
+            Integer picked = textColor;
+            int text = picked != null ? picked : dark ? 0xFFF2F7FB : 0xFF15202B;
+            int muted = picked != null ? BatArt.withAlpha(picked, 0.7f) : dark ? 0xB3C7D6E4 : 0xFF5C6B7A;
             float scale = textScale;
             if (docked) {
                 GradientDrawable bubble = new GradientDrawable();
@@ -464,11 +492,14 @@ final class SkinController {
             if (on == lit) return;
             lit = on;
             boolean dark = dark();
+            Integer picked = textColor;
             if (on) {
-                who.setTextColor(dark ? BatArt.DARK_ACCENT : BatArt.LIGHT_ACCENT);
-                who.setShadowLayer(dark ? ksTheme.px(14) : 0, 0, 0, 0x998FBADC);
+                // Lit, the label takes the text colour when one is picked and glows like the bat otherwise.
+                int glow = picked != null ? picked : bat(dark);
+                who.setTextColor(glow);
+                who.setShadowLayer(dark ? ksTheme.px(14) : 0, 0, 0, BatArt.withAlpha(glow, 0.6f));
             } else {
-                who.setTextColor(dark ? 0x8CC7D6E4 : 0xFF5C6B7A);
+                who.setTextColor(picked != null ? BatArt.withAlpha(picked, 0.55f) : dark ? 0x8CC7D6E4 : 0xFF5C6B7A);
                 who.setShadowLayer(0, 0, 0, 0);
             }
         }
@@ -494,7 +525,8 @@ final class SkinController {
                     String phase = phase();
                     light(Trace.ANSWERING.equals(phase));
                     // With Reactive activity bar off nothing follows the voice. KS sends 0 then too.
-                    boolean gone = art.draw(canvas, getWidth(), getHeight(), reactive ? level : 0, phase, dark(), traceAmp, spinKind, spinStartNs);
+                    boolean dark = dark();
+                    boolean gone = art.draw(canvas, getWidth(), getHeight(), reactive ? level : 0, phase, bat(dark), traces(dark), traceAmp, spinKind, spinStartNs);
                     if (!gone) postInvalidateOnAnimation();
                 } catch (RuntimeException error) {
                     // An exception in onDraw would end the app; a missed frame is the lesser harm.

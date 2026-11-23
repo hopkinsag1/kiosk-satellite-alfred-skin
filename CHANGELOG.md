@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0
+
+- Add **Bat color**, **Trace color** and **Text color** settings. Left at their defaults, the skin looks as before in both themes.
+
 ## 0.2.0
 
 - The turn's events (overlay, level, text, appearance, state) are followed only while the skin is picked, so the plugin does no work while another skin draws the turn, such as the Assistant 2 skin.

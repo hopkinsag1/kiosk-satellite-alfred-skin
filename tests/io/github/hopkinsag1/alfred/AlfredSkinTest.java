@@ -101,6 +101,17 @@ public final class AlfredSkinTest {
         skin.onEvent("ks.voice.state", map("state", "idle"));
         assert skin.spinKind == BatArt.SPIN_NONE;
 
+        // Colours: left at their defaults the theme's palette stays, a picked one is used in both themes, junk is ignored.
+        assert skin.batColor == null && skin.traceColor == null && skin.textColor == null;
+        assert skin.bat(true) == BatArt.DARK_ACCENT && skin.bat(false) == BatArt.LIGHT_ACCENT && skin.traces(false) == BatArt.LIGHT_ACCENT;
+        skin.configure(map("batColor", "#FFCC00", "traceColor", "#8fbadc", "textColor", "red"));
+        assert skin.batColor == 0xFFFFCC00 && skin.bat(true) == 0xFFFFCC00 && skin.bat(false) == 0xFFFFCC00;
+        assert skin.traceColor == null && skin.traces(true) == BatArt.DARK_ACCENT && skin.textColor == null;
+        skin.configure(map("traceColor", "#00ff88", "textColor", "#FFFFFF"));
+        assert skin.batColor == null && skin.traceColor == 0xFF00FF88 && skin.textColor == 0xFFFFFFFF;
+        assert BatArt.deep(BatArt.DARK_ACCENT) == BatArt.DARK_DEEP && BatArt.deep(0xFFFFCC00) == 0xFFAA8800;
+        skin.configure(map("spin", "Off"));
+
         // Appearance settings reach the fields the view reads.
         skin.onEvent("ks.voice.appearance", map("theme", "light", "background", 0.5, "textScale", 1.5, "reactive", false));
         assert "light".equals(skin.theme) && skin.background == 0.5f && skin.textScale == 1.5f && !skin.reactive;

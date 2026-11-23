@@ -41,6 +41,9 @@ Open **Settings > Voice Satellite > Appearance > Assistant 1 skin** (or **Skin**
 | Label under the bat | Small tracked capitals under the bat, lit while the assistant answers. Default `ALFRED`; empty hides it. |
 | Trace height | How far the two voice traces spike: Low, Normal or Tall. |
 | Bat spin | **Command complete and close** (default), **Close only**, or **Off**. |
+| Bat color | The bat, its glow and the rings of the spin. Default Bat Cave blue. |
+| Trace color | The two voice traces. Default Bat Cave blue. |
+| Text color | The answer, what you said and the label. Default near white (near black under the Light theme). |
 
 The skin also follows **Voice Satellite > Appearance**: Theme picks the palette, Background sets the backdrop's opacity (Skin default is near-solid Bat Cave black), Text size scales the conversation, and with Reactive activity bar off nothing moves with the voice.
 
