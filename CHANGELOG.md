@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.2
+
+- The soft band under each voice trace now fades out toward the edge with the line, instead of ending in a blunt cap.
+- Add screenshots of the full screen and docked looks to the README.
+
 ## 0.3.1
 
 - Rewrite the README for people new to the plugin, with an install button, the steps to turn the skin on and a troubleshooting section. No change to the plugin itself.

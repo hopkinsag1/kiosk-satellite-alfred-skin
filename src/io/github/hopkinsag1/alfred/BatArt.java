@@ -32,7 +32,7 @@ final class BatArt {
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private int width, height;
     private int shadersBat, shadersTrace;
-    private Shader traceFade, halo, batFill;
+    private Shader traceFade, underFade, halo, batFill;
     private float shown, glow = 0.2f, breath;
     private long lastNs;
 
@@ -106,19 +106,19 @@ final class BatArt {
         line.rewind();
         line.moveTo(0, trace.at(0) * rise);
         for (int i = 1; i < n; i++) line.lineTo(i * dx, trace.at(i) * rise);
-        int underColor = withAlpha(traceColor, 0.18f * alpha), mainAlpha = Math.round(255 * alpha);
+        int mainAlpha = Math.round(255 * alpha);
         for (int side = -1; side <= 1; side += 2) {
             for (int dir = -1; dir <= 1; dir += 2) {
                 canvas.save();
                 canvas.translate(cx, cy);
                 canvas.scale(side, dir);
-                stroke.setShader(null);
-                stroke.setColor(underColor);
+                // The soft band under the line fades out toward the edge too, so neither ends in a blunt cap.
+                stroke.setColor(Color.WHITE);
+                stroke.setAlpha(mainAlpha);
+                stroke.setShader(underFade);
                 stroke.setStrokeWidth(under);
                 canvas.drawPath(line, stroke);
                 stroke.setShader(traceFade);
-                stroke.setColor(Color.WHITE);
-                stroke.setAlpha(mainAlpha);
                 stroke.setStrokeWidth(main);
                 canvas.drawPath(line, stroke);
                 canvas.restore();
@@ -177,6 +177,8 @@ final class BatArt {
         float[] stops = {0, 0.75f, 1};
         // In the trace's own space: from the bat's centre out to the edge. The mirrored draws flip it with the line.
         traceFade = new LinearGradient(0, 0, Math.max(1, cx), 0, fade, stops, Shader.TileMode.CLAMP);
+        int[] soft = {withAlpha(traceColor, 0.18f), withAlpha(traceColor, 0.18f), withAlpha(traceColor, 0)};
+        underFade = new LinearGradient(0, 0, Math.max(1, cx), 0, soft, stops, Shader.TileMode.CLAMP);
         halo = new RadialGradient(cx, cy, Math.max(1, batW * 0.9f), new int[] {accent, withAlpha(accent, 0)}, null, Shader.TileMode.CLAMP);
         batFill = new LinearGradient(0, 0, 0, BatPath.HEIGHT, accent, deep, Shader.TileMode.CLAMP);
     }
