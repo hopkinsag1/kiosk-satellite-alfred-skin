@@ -41,7 +41,13 @@ If you use two assistants, **Assistant 2 skin** in the same place sets the look 
 
 What you said and the answer show under the bat, as they do with the built-in skins.
 
-Kiosk Satellite has two overlay modes, and the skin draws both. Full screen covers the kiosk, as in the picture above. Docked shows a small card at the bottom of the screen with a small bat beside the conversation, and leaves the dashboard in view and usable.
+Kiosk Satellite has two overlay modes, and the skin draws both. Full screen covers the kiosk. Docked shows a small card at the bottom of the screen with a small bat beside the conversation, and leaves the dashboard in view and usable. Pick the mode under **Settings > Voice Satellite > Appearance > Overlay mode**.
+
+| Full screen | Docked |
+| --- | --- |
+| <img src="docs/full-screen.jpg" alt="Full screen on a portrait tablet: the bat with its two traces above the label, the question and the answer" width="320"> | <img src="docs/docked.jpg" alt="Docked on a portrait tablet: a card at the bottom of the screen with a small bat beside the question and the answer, the screensaver in view above it" width="320"> |
+
+Both pictures are Kiosk Satellite's preview on a portrait tablet, with the traces at rest.
 
 ## Settings
 
