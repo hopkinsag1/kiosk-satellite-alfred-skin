@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.3
+
+- The command-complete spin now finishes before the bat spins away. A turn that closed right after a short answer used to cut it off after a fraction of a second.
+- Both spins are slower: two turns when the command completes and one on close, instead of three and two.
+- Add screenshots of a live turn to the README.
+
 ## 0.3.2
 
 - The soft band under each voice trace now fades out toward the edge with the line, instead of ending in a blunt cap.

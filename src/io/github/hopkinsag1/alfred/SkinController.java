@@ -36,6 +36,8 @@ final class SkinController {
     static final float DEFAULT_BACKGROUND = 0.96f;
     /** How long the exit spin keeps the overlay up after KS hides the turn, in ms. */
     static final long EXIT_MS = 750;
+    /** How long the command-complete spin plays, in ms. A close that arrives sooner waits for the rest of it. */
+    static final long DONE_MS = (long) (BatArt.DONE_SECONDS * 1000);
     static final int SPIN_OFF = 0, SPIN_CLOSE = 1, SPIN_ALL = 2;
     /** The colour settings' defaults, as the manifest declares them. Left at these, the skin keeps its light and dark palettes. */
     static final String DEFAULT_BAT = "#8FBADC", DEFAULT_TRACE = "#8FBADC", DEFAULT_TEXT = "#F2F7FB";
@@ -56,6 +58,8 @@ final class SkinController {
     private String drawn;
     /** The exit spin is playing and hideOverlay is scheduled. */
     private boolean hidePending;
+    /** Counts closes and shows, so a close's delayed steps never act on a later one. */
+    private int hideToken;
     private boolean spunThisTurn;
 
     // Read by the view on the main thread.
@@ -289,23 +293,38 @@ final class SkinController {
             spunThisTurn = false;
             SkinView current = view;
             if (spinMode != SPIN_OFF && current != null) {
-                // Spin away on the live view, then take the overlay down.
+                // A command-complete spin that is still playing finishes first. Then the bat spins away on the
+                // live view and the overlay comes down.
                 hidePending = true;
-                spin(BatArt.SPIN_EXIT);
-                int current_generation = generation;
+                final int token = ++hideToken;
+                final int startedIn = generation;
+                final long wait = spinKind == BatArt.SPIN_DONE ? Math.max(0, DONE_MS - (System.nanoTime() - spinStartNs) / 1_000_000) : 0;
                 current.postDelayed(() -> {
                     synchronized (SkinController.this) {
-                        if (current_generation != generation || !hidePending) return;
-                        hidePending = false;
-                        host.hideOverlay(KEY);
+                        if (startedIn != generation || token != hideToken || !hidePending) return;
+                        SkinView live = view;
+                        if (live == null) {
+                            hidePending = false;
+                            host.hideOverlay(KEY);
+                            return;
+                        }
+                        spin(BatArt.SPIN_EXIT);
+                        live.postDelayed(() -> {
+                            synchronized (SkinController.this) {
+                                if (startedIn != generation || token != hideToken || !hidePending) return;
+                                hidePending = false;
+                                host.hideOverlay(KEY);
+                            }
+                        }, EXIT_MS);
                     }
-                }, EXIT_MS);
+                }, wait);
             } else {
                 host.hideOverlay(KEY);
             }
             return;
         }
         hidePending = false;
+        hideToken++;
         spinKind = BatArt.SPIN_NONE;
         if ("full".equals(want)) {
             host.showOverlay(KEY, animated(OverlaySpec.fullScreen().onTop(true).touchable(false).closeOnBack(false), OverlaySpec.FADE, 250), new Skin(false));

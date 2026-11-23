@@ -85,11 +85,11 @@ final class BatArt {
             float u = Math.min(1, (now - spinStartNs) / 1e9f / dur);
             float e = 1 - (1 - u) * (1 - u) * (1 - u);
             if (spinKind == SPIN_DONE) {
-                spinDeg = 3 * 360 * e;
+                spinDeg = 2 * 360 * e;
                 scale = 1 + 0.32f * (float) Math.sin(u * Math.PI);
                 burst = 1 - u;
             } else {
-                spinDeg = 2 * 360 * e;
+                spinDeg = 360 * e;
                 scale = Math.max(0.001f, 1 - e);
                 alpha = 1 - e * e;
                 burst = 0.6f * (1 - u);

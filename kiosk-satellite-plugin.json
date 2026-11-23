@@ -3,7 +3,7 @@
   "apiVersion": 1,
   "id": "alfred-bat-voice-skin",
   "name": "Alfred (Bat Cave)",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "minAndroidSdk": 24,
   "minAppVersion": "2026.10.39",
   "entryClass": "io.github.hopkinsag1.alfred.AlfredPlugin",
